@@ -28,12 +28,10 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
-  google_generative_ai: ^0.3.0  # For Gemini AI
-  shared_preferences: ^2.2.2    # To store chat history locally
-  http: ^1.1.0                  # For API requests
+  http: ^1.2.1  # Check for the latest version
   flutter:
     sdk: flutter
-    
+  flutter_markdown: ^0.6.17 # Ensure the latest version  
 
 
   # The following adds the Cupertino Icons font to your application.

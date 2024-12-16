@@ -1,5 +1,7 @@
-// chat_screen.dart
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class ChatScreen extends StatefulWidget {
   @override
@@ -10,15 +12,57 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<Map<String, String>> _messages = [];
   final TextEditingController _controller = TextEditingController();
 
-  void _sendMessage() {
+  final String apiKey =
+      'AIzaSyDc4UaC6lB8rI12ip2jfF_-nWaQVeAJ7GA'; // Replace with your API key
+  Future<void> _sendMessage() async {
     if (_controller.text.isEmpty) return;
 
+    final userMessage = _controller.text;
+
     setState(() {
-      _messages.add({"user": _controller.text});
-      _messages.add({
-        "bot": "This is a response from the AI."
-      }); // Placeholder for AI response
+      _messages.add({"user": userMessage});
     });
+
+    final url =
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=$apiKey';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "contents": [
+            {
+              "parts": [
+                {"text": userMessage}
+              ]
+            }
+          ]
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        // Check if the response structure is valid
+        final aiResponse = data['candidates']?[0]['content']['parts']?[0]
+                ['text'] ??
+            "Sorry, no response received.";
+
+        setState(() {
+          _messages.add({"bot": aiResponse});
+        });
+      } else {
+        setState(() {
+          _messages.add({"bot": "Sorry, I couldn't process that."});
+        });
+      }
+    } catch (e) {
+      print("Error: $e");
+      setState(() {
+        _messages.add({"bot": "Something went wrong. Please try again."});
+      });
+    }
 
     _controller.clear();
   }
@@ -32,7 +76,7 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             Icon(Icons.smart_toy, color: Colors.white),
             SizedBox(width: 10),
-            Text('AI Chatbot',
+            Text('Dr. AI Chatbot',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           ],
         ),
@@ -51,27 +95,59 @@ class _ChatScreenState extends State<ChatScreen> {
                 return Align(
                   alignment:
                       isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                    padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: isUser ? Color(0xFF1A73E8) : Colors.white,
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.3),
-                          spreadRadius: 1,
-                          blurRadius: 5,
+                  child: Row(
+                    mainAxisAlignment: isUser
+                        ? MainAxisAlignment.end
+                        : MainAxisAlignment.start,
+                    children: [
+                      if (!isUser)
+                        CircleAvatar(
+                          backgroundColor: Colors.blueAccent,
+                          child:
+                              Icon(Icons.medical_services, color: Colors.white),
                         ),
-                      ],
-                    ),
-                    child: Text(
-                      message.values.first,
-                      style: TextStyle(
-                        color: isUser ? Colors.white : Colors.black87,
-                        fontSize: 16,
+                      SizedBox(width: 10),
+                      Flexible(
+                        child: Container(
+                          margin:
+                              EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isUser ? Color(0xFF1A73E8) : Colors.white,
+                            borderRadius: BorderRadius.circular(15),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.3),
+                                spreadRadius: 1,
+                                blurRadius: 5,
+                              ),
+                            ],
+                          ),
+                          child: isUser
+                              ? Text(
+                                  message.values.first,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                  ),
+                                )
+                              : MarkdownBody(
+                                  data: message.values.first,
+                                  styleSheet: MarkdownStyleSheet(
+                                    p: TextStyle(
+                                        color: Colors.black87, fontSize: 16),
+                                  ),
+                                ),
+                        ),
                       ),
-                    ),
+                      if (isUser) SizedBox(width: 10),
+                      if (isUser)
+                        CircleAvatar(
+                          backgroundColor: Colors.grey[400],
+                          child: Icon(Icons.person, color: Colors.white),
+                        ),
+                    ],
                   ),
                 );
               },
